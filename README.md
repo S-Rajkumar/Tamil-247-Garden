@@ -1,4 +1,4 @@
-# Tamil 247 World — prototype
+# Tamil 247 Garden — prototype
 
 **Play it: https://s-rajkumar.github.io/Tamil-247-Garden/**
 
@@ -429,5 +429,9 @@ stem, which is the whole reason tier 2 exists.
 - [ ] **Very large gardens are a lot of SVG.** A 19x19 garden is ~350 cells
       redrawn on every action. The puzzle backdrop is already capped to the
       middle; the garden view itself may need culling or a canvas renderer.
-- [ ] **Rename.** "Word World" collides with the PBS Kids series of that name,
-      whose premise is also words forming the objects they name.
+- [x] **Rename.** Done — **Tamil 247 Garden**, everywhere a player or a
+      reviewer can see it. "Word World" collided with the PBS Kids series,
+      whose premise is also words forming the objects they name, and
+      "Tamil 247 World" read as an alphabet drill rather than a game. The
+      saved-game key still says `t247world`: it is invisible to players,
+      and renaming it would orphan every existing save for no gain.

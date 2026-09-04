@@ -1,4 +1,4 @@
-# Status — Tamil 247 World
+# Status — Tamil 247 Garden
 
 Handoff notes, written to be read cold. `README.md` explains how the game
 works; this file records where it stands, what is settled, what is not, and the
@@ -381,6 +381,12 @@ behaviour does not change, suspect this first.
   need only be real. Never tell a player a real word is wrong.
 - **The wall is a stat**, not decoration — it and the pets are the defence roll.
 - **English interface.** Tamil appears only where it is the subject.
+- **The name is Tamil 247 Garden**, everywhere a player or a reviewer can see
+  it. "Word World" collided with the PBS Kids series, whose premise is also
+  words forming the things they name; "Tamil 247 World" read as an alphabet
+  drill app, which risks the made-for-kids rejection the platform applies.
+  The saved-game key still says `t247world` on purpose: it is invisible to
+  players, and renaming it would orphan every existing save to no end.
 
 ---
 
@@ -394,11 +400,7 @@ behaviour does not change, suspect this first.
    has a bulk action, the others do not.
 3. **Duplicate pets stack hard** — seven of one animal is a large flat bonus.
    Diminishing returns per duplicate.
-4. **Rename.** "Word World" collides with the PBS Kids series, whose premise is
-   also words forming the objects they name. "Tamil 247 World" is legally clear
-   but reads as an alphabet-learning app, which risks the made-for-kids
-   rejection the platform applies.
-5. **Custom art before launch** if the garden is to look like nobody else's.
+4. **Custom art before launch** if the garden is to look like nobody else's.
 
 ---
 
