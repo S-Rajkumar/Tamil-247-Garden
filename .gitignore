@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.DS_Store
+*.local
+
+# Downloaded source corpora, rebuilt with `npm run dict`. Wiktionary alone is
+# 84 MB — far past what belongs in a repo, and every file it produces
+# (public/dict/*.json, src/game/levelwords.js) is committed instead.
+tools/data/
+
+# Local editor and tool state.
+.claude/settings.local.json

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#0B1D27">
+  <title>Tamil 247 World</title>
+  <!--
+    The Playables SDK, and the one external script the platform permits.
+    It MUST load before any game code, so it sits above the module script and
+    outside the bundle. Off-platform it 404s harmlessly and `ytgame` is simply
+    undefined, which is exactly what src/platform/playables.js expects.
+  -->
+  <script src="https://www.youtube.com/game_api/v1"></script>
+  <style>
+    /*
+      Inline, because it has to paint before the bundle arrives: the platform
+      wants `firstFrameReady` called against a screen that visibly says loading
+      is underway, and a stylesheet request would be a second round trip.
+    */
+    html, body { height: 100%; margin: 0; background: #0B1D27; }
+    #boot {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 18px;
+      background: linear-gradient(#9FD9F2, #DCF0DE 78%, #CFE7C6);
+      font: 600 15px/1.4 ui-rounded, "Segoe UI", system-ui, sans-serif;
+      color: #14506B;
+    }
+    #boot .seedling { font-size: 46px; animation: bootPop 1.6s ease-in-out infinite; }
+    #boot .bar { width: 148px; height: 6px; border-radius: 3px; background: rgba(20, 80, 107, .18); overflow: hidden; }
+    #boot .bar i { display: block; width: 40%; height: 100%; border-radius: 3px; background: #2E9E63; animation: bootRun 1.1s ease-in-out infinite; }
+    @keyframes bootPop { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+    @keyframes bootRun { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }
+    @media (prefers-reduced-motion: reduce) {
+      #boot .seedling, #boot .bar i { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="boot" role="status" aria-live="polite">
+    <span class="seedling" aria-hidden="true">🌱</span>
+    <span>Loading Tamil 247 World…</span>
+    <span class="bar" aria-hidden="true"><i></i></span>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,1805 @@
+/* ---------------------------------------------------------------------------
+   Tamil 247 World — styles
+--------------------------------------------------------------------------- */
+
+/*
+ * The Tamil face ships with the game.
+ *
+ * It cannot be a Google Fonts <link>: the platform forbids external requests.
+ * More importantly it cannot be left to the device either — Tamil support is
+ * not a given, and a player whose phone has no Tamil face would see rows of
+ * empty boxes where the entire subject of the game should be.
+ *
+ * This is Google's own Tamil subset of Noto Sans Tamil: one variable file
+ * covering weights 400-700, 49 KB. Its unicode-range covers the Tamil block
+ * plus ZWJ and ZWNJ (U+200C-200D), which Tamil shaping needs, and U+25CC, the
+ * dotted circle a renderer shows for a combining mark standing alone — which
+ * this game does show, in the 247 chart.
+ */
+@font-face {
+  font-family: "Noto Sans Tamil";
+  src: url("./fonts/noto-sans-tamil.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0964-0965, U+0B82-0BFA, U+200C-200D, U+20B9, U+25CC;
+}
+
+:root {
+  --sea:        #2E8FB8;
+  --sea-light:  #5CC3D8;
+  --sand:       #F2DCA8;
+  --sand-dark:  #E7CE93;
+  --wood:       #E4B878;
+  --roof:       #C4553C;
+  --leaf:       #3E9B5F;
+  --coin:       #F0B429;
+  --ink:        #0E3244;
+  --ink-2:      #35576A;
+  --ink-3:      #6C8A99;
+  --paper:      #FBFAF4;
+  --white:      #FFFFFF;
+  --bad:        #C4553C;
+  --good:       #2E9E63;
+
+  /* The bundled face first. The rest are a courtesy for a device that happens
+     to have one, and a last resort if the woff2 ever fails to load. */
+  --tamil: "Noto Sans Tamil", "Nirmala UI", "Latha", "Tamil Sangam MN", sans-serif;
+  --ui: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+  --pop: cubic-bezier(.34, 1.56, .64, 1);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #0B1D27;
+  font-family: var(--ui);
+  color: var(--ink);
+}
+
+/* Responsive across every required aspect ratio: the game is a portrait
+   column, letterboxed and centred when the viewport is wider. */
+#app {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  overflow: hidden;
+  background: linear-gradient(var(--sky-1, #BFE3F0), var(--sky-3, #E4F4F7) 58%, var(--sky-floor, #F3E2BE));
+  transition: background .5s ease;
+  box-shadow: 0 0 60px rgba(0, 0, 0, .35);
+}
+
+.screenholder { position: absolute; inset: 0; }
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ta { font-family: var(--tamil); }
+
+/* ---------------------------------------------------------- topbar ------- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 12px 12px 4px;
+  flex: none;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, .93);
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: 600 13px/1 var(--ui);
+  color: var(--ink);
+  box-shadow: 0 2px 5px rgba(10, 40, 55, .14);
+  white-space: nowrap;
+}
+.chip .ta { font-size: 14px; }
+.chip .dim { color: var(--ink-3); font-weight: 500; }
+.chip-btn { cursor: pointer; transition: transform .15s var(--pop); }
+.chip-btn:hover { transform: translateY(-1px); }
+.chip-btn:active { transform: scale(.95); }
+.chip-btn:focus-visible { outline: 2px solid var(--sea); outline-offset: 2px; }
+.chip-ico { font-size: 15px; line-height: 1; }
+.chip-level, .chip-title { margin-left: auto; }
+.chip-title { margin-left: 0; }
+
+.coin {
+  width: 15px; height: 15px; border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, #FFE08A, var(--coin) 62%, #C98A0E);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .16);
+  display: inline-block; flex: none;
+}
+
+.ring { width: 18px; height: 18px; flex: none; }
+.ring-bg { fill: none; stroke: #D9E3E6; stroke-width: 3.4; }
+.ring-fg {
+  fill: none; stroke: var(--good); stroke-width: 3.4; stroke-linecap: round;
+  transform: rotate(-90deg); transform-origin: 50% 50%;
+  transition: stroke-dasharray .6s ease;
+}
+
+/* ---------------------------------------------------------- puzzle ------- */
+
+.slots {
+  flex: none;
+  padding: 14px 14px 0;
+  display: flex; flex-direction: column; align-items: center; gap: 7px;
+}
+.slotrow { display: flex; align-items: center; gap: 5px; --cell-scale: 1; }
+
+/*
+ * A slot sizes to the letter in it, not the other way round.
+ *
+ * Tamil clusters are genuinely different widths — ர is 13px where ஙௌ is 66px
+ * at the same font size — so a fixed box either clips the wide ones or shrinks
+ * them until they no longer match their own word. The width is a MINIMUM now;
+ * a wide cluster makes its own cell wider and every letter keeps one size.
+ *
+ * When a whole word is still too wide for the screen, `fitRow` scales the
+ * row through --cell-scale, which moves the box and the type together.
+ */
+.cell {
+  min-width: calc(clamp(30px, 8.6vw, 40px) * var(--cell-scale, 1));
+  height: calc(clamp(34px, 9.6vw, 45px) * var(--cell-scale, 1));
+  border-radius: 8px;
+  /* Opaque enough to carry dark text over a dark sky: at .5 the night theme
+     put the letters at 4.2:1, under the 4.5:1 a small glyph needs. */
+  background: rgba(255, 255, 255, .74);
+  border: 1.5px solid rgba(14, 60, 80, .16);
+  display: flex; align-items: center; justify-content: center;
+  flex: 0 0 auto;
+  font-family: var(--tamil);
+  font-size: calc(clamp(15px, 4.4vw, 20px) * var(--cell-scale, 1));
+  font-weight: 600;
+  color: var(--ink);
+  padding: 0 calc(5px * var(--cell-scale, 1));
+}
+.cell.filled {
+  background: var(--white);
+  border-color: #3FA0BF;
+  animation: cellpop .38s var(--pop) backwards;
+  animation-delay: var(--d, 0ms);
+  box-shadow: 0 2px 4px rgba(10, 50, 70, .12);
+}
+@keyframes cellpop {
+  0%   { transform: scale(.4) translateY(10px); opacity: 0; }
+  100% { transform: none; opacity: 1; }
+}
+
+.objtag {
+  width: 25px; height: 25px; border-radius: 7px;
+  background: var(--good); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; margin-left: 4px;
+  box-shadow: 0 2px 4px rgba(10, 50, 70, .18);
+}
+
+.bonusbar { flex: none; display: flex; justify-content: center; padding: 10px 0 0; }
+.bonus-pill {
+  background: rgba(255, 255, 255, .8);
+  border-radius: 999px; padding: 4px 12px;
+  font: 600 12px/1 var(--ui); color: var(--ink-2);
+}
+.bonus-pill .dim { color: var(--ink-3); font-weight: 500; }
+
+.wordpreview {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--tamil);
+  font-size: clamp(26px, 8vw, 36px);
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: .01em;
+  opacity: 0;
+  transition: opacity .16s ease, color .16s ease;
+  min-height: 44px;
+  padding: 0 16px;
+  text-align: center;
+}
+.wordpreview.show { opacity: 1; }
+.wordpreview.bad { color: var(--bad); }
+.wordpreview.good { color: var(--good); }
+
+/*
+ * The word being built is also the control that sends it. Building by tapping
+ * had no visible submit and no visible undo, so the word grew until it was
+ * nonsense and there was no way out of it.
+ */
+.wordpreview:empty { pointer-events: none; }
+.pw-word {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .8);
+  box-shadow: 0 2px 8px rgba(10, 50, 70, .12);
+}
+.pw-go, .pw-x {
+  flex: none; margin-left: 8px; border: 0; cursor: pointer;
+  width: 34px; height: 34px; border-radius: 50%;
+  font: 700 16px/1 var(--ui);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 6px rgba(10, 50, 70, .2);
+  transition: transform .13s var(--pop);
+}
+.pw-go { background: var(--good); color: #fff; }
+.pw-x  { background: rgba(255, 255, 255, .92); color: var(--ink-3); font-size: 14px; }
+.pw-go:hover, .pw-x:hover { transform: scale(1.1); }
+.pw-go:active, .pw-x:active { transform: scale(.92); }
+
+.arcwrap { flex: none; display: flex; justify-content: center; padding: 0 0 6px; }
+.arc {
+  position: relative;
+  width: min(72vw, 260px);
+  aspect-ratio: 1;
+  /* touch-action stops the browser claiming the drag as a scroll; user-select
+     stops it claiming the drag as a text selection. Either one ends the
+     gesture with a pointercancel part-way through a word. */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.arc-disc {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: rgba(255, 255, 255, .62);
+  box-shadow: 0 4px 16px rgba(10, 50, 70, .16), inset 0 1px 0 rgba(255, 255, 255, .9);
+}
+.arc-link { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.arc-link polyline {
+  fill: none; stroke: var(--coin); stroke-width: 10;
+  stroke-linecap: round; stroke-linejoin: round; opacity: .85;
+}
+
+.tile {
+  position: absolute;
+  width: min(var(--tile-size, 54px), 13vw);
+  height: min(var(--tile-size, 54px), 13vw);
+  transform: translate(-50%, -50%);
+  border: 0; border-radius: 15px;
+  background: var(--white);
+  font-family: var(--tamil);
+  font-size: min(var(--tile-font, 23px), 5.4vw);
+  font-weight: 600;
+  color: var(--ink);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 3px 0 rgba(14, 60, 80, .16), 0 4px 10px rgba(10, 50, 70, .14);
+  cursor: pointer;
+  transition: background .14s ease, color .14s ease, box-shadow .14s ease;
+  overflow: hidden; padding: 0 2px;
+}
+.tile.on {
+  background: var(--coin);
+  color: #3A2400;
+  box-shadow: 0 2px 0 rgba(140, 90, 0, .3), 0 6px 14px rgba(200, 140, 20, .4);
+}
+.tile:focus-visible { outline: 3px solid var(--sea); outline-offset: 3px; }
+
+.hintbar {
+  flex: none;
+  display: flex; justify-content: center; gap: 8px;
+  padding: 4px 12px 16px;
+}
+.hint {
+  border: 0; border-radius: 13px;
+  background: rgba(255, 255, 255, .93);
+  /* Five across a 360px phone: fixed 58px overflowed, so they share instead. */
+  flex: 1 1 0; min-width: 0; max-width: 62px; padding: 7px 2px 5px;
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  box-shadow: 0 2px 5px rgba(10, 40, 55, .14);
+  cursor: pointer;
+  transition: transform .15s var(--pop);
+}
+.hint:hover { transform: translateY(-2px); }
+.hint:active { transform: scale(.94); }
+.hint:focus-visible { outline: 2px solid var(--sea); outline-offset: 2px; }
+.hint .hi { font-size: 17px; line-height: 1; }
+.hint .hl { font-family: var(--tamil); font-size: 11px; color: var(--ink-2); }
+.hint .hc { font: 600 9.5px/1 var(--mono); color: var(--coin); }
+.hint .hc.free { color: var(--good); }
+
+/* ---------------------------------------------------------- toast -------- */
+
+.toastlayer {
+  position: absolute; left: 0; right: 0; bottom: 44%;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  pointer-events: none; z-index: 40;
+}
+.toast {
+  font: 600 14px/1 var(--ui);
+  font-family: var(--tamil);
+  padding: 8px 16px; border-radius: 999px;
+  color: #fff; background: var(--ink);
+  box-shadow: 0 6px 18px rgba(10, 40, 55, .3);
+}
+.toast-bonus { background: var(--good); }
+.toast-hint  { background: var(--sea); }
+.toast-bad   { background: var(--bad); }
+
+/* ---------------------------------------------------------- reward ------- */
+
+.overlay {
+  position: absolute; inset: 0; z-index: 60;
+  background: rgba(8, 38, 52, .55);
+  backdrop-filter: blur(2px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.rcard {
+  background: var(--paper);
+  border-radius: 20px;
+  width: 100%; max-width: 340px;
+  padding: 18px 17px 16px;
+  box-shadow: 0 16px 44px rgba(5, 25, 35, .35);
+}
+.rtitle {
+  font-family: var(--tamil); font-size: 19px; font-weight: 700;
+  color: var(--ink); text-align: center; margin: 0 0 14px;
+}
+.rrow {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 0; border-top: 1px solid #E6E2D2;
+  font-size: 13.5px; color: var(--ink-2);
+}
+.rrow:first-of-type { border-top: 0; }
+.rrow-dim { opacity: .55; }
+.rrow-hit .rval { color: var(--good); }
+.rrow-grand {
+  background: linear-gradient(90deg, rgba(122, 94, 168, .14), rgba(122, 94, 168, 0));
+  border-radius: 10px; margin: 2px -6px; padding: 10px 6px;
+}
+.rrow-grand .rval { color: #7A5EA8; font-size: 16px; }
+.ricon {
+  width: 30px; height: 30px; border-radius: 9px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-family: var(--tamil);
+}
+.rlabel { flex: 1; line-height: 1.35; font-family: var(--tamil); }
+.rlabel .dim { color: var(--ink-3); font-size: 12px; }
+.rval { font: 600 14px/1 var(--mono); color: var(--ink); white-space: nowrap; }
+.rlets { display: flex; gap: 3px; margin-top: 4px; flex-wrap: wrap; }
+.rlets span {
+  font-family: var(--tamil); font-size: 12px; font-weight: 600;
+  background: var(--good); color: #fff; border-radius: 5px; padding: 1px 6px;
+}
+.rtotal {
+  margin-top: 12px; padding-top: 11px; border-top: 2px solid var(--ink);
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-weight: 700; color: var(--ink); font-size: 16px;
+  font-family: var(--tamil);
+}
+.rtotal b { font-family: var(--mono); font-size: 19px; }
+
+.ractions { display: flex; gap: 9px; margin-top: 15px; }
+.btn {
+  flex: 1; border: 0; border-radius: 13px; padding: 12px 10px;
+  font: 600 15px/1 var(--ui); font-family: var(--tamil);
+  cursor: pointer; transition: transform .14s var(--pop), filter .14s ease;
+}
+.btn:hover { transform: translateY(-2px); }
+.btn:active { transform: scale(.96); }
+.btn:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+.btn-primary {
+  background: linear-gradient(#3FB07A, var(--good));
+  color: #fff; box-shadow: 0 3px 0 #1F7A4A, 0 8px 18px rgba(46, 158, 99, .34);
+}
+.btn-ghost {
+  background: #E8E3D2; color: var(--ink-2);
+  box-shadow: 0 3px 0 #CFC8B4;
+}
+.btn-lg { padding: 15px 18px; font-size: 17px; }
+
+/* ---------------------------------------------------------- garden ------- */
+
+.garden .gview {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  background: linear-gradient(var(--sky-1, #9FD9F2) 0%, var(--sky-2, #C6E9F3) 40%,
+                              var(--sky-3, #DCF0DE) 78%, var(--sky-4, #CFE7C6) 100%);
+  transition: background .5s ease;
+}
+
+.gsky { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.gsky .sun {
+  position: absolute; right: 12%; top: 7%;
+  width: 46px; height: 46px; border-radius: 50%;
+  background: radial-gradient(circle at 40% 38%, var(--sun-core, #FFF8DC),
+                              var(--sun-mid, #FFE08A) 58%, var(--sun-edge, #FFCF57));
+  box-shadow: 0 0 30px 10px var(--sun-glow, rgba(255, 222, 130, .45));
+}
+.gsky .cloud { position: absolute; background: var(--cloud-a, rgba(255,255,255,.9)); border-radius: 999px; }
+.gsky .cloud::before, .gsky .cloud::after {
+  content: ''; position: absolute; background: inherit; border-radius: 999px;
+}
+.gsky .c1 { width: 92px; height: 40px; top: 9%;  left: -25%; }
+.gsky .c2 { width: 66px; height: 29px; top: 22%; left: -25%; opacity: .82; }
+.gsky .c3 { width: 118px; height: 51px; top: 3%; left: -35%; opacity: .66; }
+
+.gstage {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: 8px 10px 14px;
+}
+/* One SVG with a tight viewBox — the garden always fills the frame. */
+.gardensvg { width: 100%; height: 100%; display: block; overflow: visible; }
+
+.soil, .wallblock, .wallslot { cursor: pointer; }
+.soil polygon { transition: fill .18s ease; }
+.soil:hover polygon:last-of-type { fill: #A67B4E; }
+.soil.is-picked polygon:last-of-type { fill: #C29A63; }
+.soil:focus-visible, .wallblock:focus-visible, .wallslot:focus-visible { outline: 2px solid #0E3244; }
+
+.wallslot polygon { transition: fill-opacity .18s ease; }
+.wallslot:hover polygon { fill-opacity: .5; }
+.wallblock { transition: transform .16s var(--pop); }
+.wallblock:hover { transform: translateY(-3px); }
+
+.gfloat { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.floatnum {
+  position: absolute;
+  font: 800 20px/1 var(--mono);
+  color: #1D7A4C;
+  text-shadow: 0 2px 0 #fff, 0 0 10px rgba(255,255,255,.9);
+  transform: translate(-50%, -50%);
+  animation: floatUp 1.1s cubic-bezier(.2,.8,.3,1) forwards;
+}
+.floatcoin {
+  position: absolute;
+  width: 13px; height: 13px; border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, #FFE08A, #F0B429 62%, #C98A0E);
+  transform: translate(-50%, -50%);
+  animation: coinFly .95s cubic-bezier(.2,.7,.35,1) forwards;
+}
+
+/* ---- bottom bar ---- */
+.gbar {
+  flex: none;
+  display: flex; align-items: stretch; gap: 6px;
+  padding: 8px 10px 0;
+  position: relative;
+}
+.gtab {
+  flex: 1; min-width: 0;
+  border: 0; border-radius: 13px;
+  background: rgba(255,255,255,.9);
+  padding: 7px 4px 6px;
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(10,40,55,.12);
+  transition: transform .15s var(--pop), background .15s ease;
+}
+.gtab:hover { transform: translateY(-2px); }
+.gtab:active { transform: scale(.95); }
+.gtab.is-on { background: #0E3244; color: #fff; }
+.gtab.is-on .gt-sub { color: rgba(255,255,255,.7); }
+.gtab.is-off { opacity: .5; cursor: not-allowed; }
+.gtab.can { background: linear-gradient(#3FB07A, var(--good)); color: #fff; }
+.gtab.can .gt-sub { color: rgba(255,255,255,.85); }
+.gtab:focus-visible { outline: 2px solid var(--sea); outline-offset: 2px; }
+.gt-ico { font-size: 17px; line-height: 1; }
+.gt-l { font: 700 11.5px/1 var(--ui); }
+.gt-sub {
+  font: 500 9px/1.2 var(--mono); color: var(--ink-3);
+  text-align: center; max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.readypip {
+  position: absolute; right: 12px; top: -8px;
+  background: var(--good); color: #fff;
+  font: 700 10px/1 var(--mono);
+  padding: 4px 8px; border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(20,90,60,.35);
+}
+
+/* ---- seed / pet drawer ---- */
+.gdrawer {
+  flex: none;
+  background: rgba(255,255,255,.95);
+  border-top: 1px solid rgba(14,60,80,.1);
+  padding: 9px 10px 4px;
+  margin-top: 8px;
+}
+.drawhead {
+  display: flex; align-items: baseline; gap: 8px; margin-bottom: 7px;
+  font-size: 13px; color: var(--ink);
+}
+.drawhead .dim { font-size: 11px; color: var(--ink-3); }
+.seedrow { display: flex; gap: 7px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; }
+.seed {
+  flex: 0 0 auto; width: 78px;
+  border: 0; border-radius: 12px;
+  background: #F2F6F1;
+  padding: 8px 5px 7px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(14,60,80,.07);
+  transition: transform .15s var(--pop), background .15s ease;
+}
+.seed:hover { transform: translateY(-2px); background: #E9F2E7; }
+.seed.is-off { opacity: .45; cursor: not-allowed; }
+.seed.is-owned { background: #E2F1E6; box-shadow: inset 0 0 0 1.5px var(--good); }
+.seed:focus-visible { outline: 2px solid var(--sea); outline-offset: 2px; }
+.seedart { font-size: 18px; line-height: 1; height: 20px; display: flex; align-items: center; }
+.bloomdot {
+  width: 15px; height: 15px; border-radius: 50%;
+  background: var(--p, #E4566B);
+  box-shadow: 0 0 0 3px rgba(255,255,255,.8), inset -2px -2px 0 rgba(0,0,0,.12);
+  display: inline-block;
+}
+.seedname { font: 700 11px/1.1 var(--ui); color: var(--ink); }
+.seedta { font-size: 11px; color: var(--ink-2); }
+.seedcost { display: inline-flex; align-items: center; gap: 3px; font: 700 10.5px/1 var(--mono); color: var(--ink); }
+.seedcost .coin { width: 11px; height: 11px; }
+.seedyield { font: 600 9px/1 var(--mono); color: var(--good); }
+
+.worldactions { flex: none; padding: 10px 12px 12px; }
+.worldactions .btn { width: 100%; }
+
+
+/* ---- wall action panel ---- */
+.wallpanel { display: flex; align-items: center; gap: 10px; }
+.wp-info { flex: 1; min-width: 0; }
+.wp-info b { display: block; font: 700 14px/1.2 var(--ui); color: var(--ink); }
+.wp-info .dim { display: block; font-size: 11.5px; color: var(--ink-3); margin-top: 2px; }
+.wp-acts { display: flex; align-items: center; gap: 7px; }
+.btn-sell {
+  border: 0; border-radius: 11px; padding: 9px 12px;
+  background: #EDE6D6; color: #7A5F32;
+  font: 700 12px/1 var(--mono); cursor: pointer;
+  display: inline-flex; align-items: center; gap: 5px;
+  box-shadow: 0 2px 0 #D6CDB8;
+  transition: transform .14s var(--pop);
+}
+.btn-sell:hover { transform: translateY(-2px); }
+.btn-sell .coin { width: 11px; height: 11px; }
+.btn-close {
+  border: 0; border-radius: 10px; width: 32px; height: 32px;
+  background: #E8ECEA; color: var(--ink-3);
+  font-size: 13px; cursor: pointer;
+}
+.btn-close:hover { background: #DCE2DF; }
+.wp-acts .btn-buy { padding: 9px 13px; }
+.growbar {
+  height: 5px; border-radius: 3px; margin-top: 6px;
+  background: rgba(14, 60, 80, .12); overflow: hidden; max-width: 190px;
+}
+.growbar i {
+  display: block; height: 100%; border-radius: 3px;
+  background: linear-gradient(90deg, #4E9B4A, #7ACB6E);
+  transition: width .45s cubic-bezier(.2,.8,.3,1);
+}
+.btn-boost {
+  border: 0; border-radius: 11px; padding: 6px 9px;
+  background: #E4F0E2; color: #2C6B3F;
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  cursor: pointer; box-shadow: 0 2px 0 #C9DEC6;
+  transition: transform .14s var(--pop);
+}
+.btn-boost:hover { transform: translateY(-2px); }
+.btn-boost.is-off { opacity: .45; cursor: not-allowed; }
+.btn-boost .bb-ico { font-size: 14px; line-height: 1; }
+.btn-boost .bb-n { display: inline-flex; align-items: center; gap: 3px; font: 700 10.5px/1 var(--mono); }
+.btn-boost .bb-n .coin { width: 10px; height: 10px; }
+.btn-boost .bb-p { font: 600 8.5px/1 var(--mono); color: #4E9B4A; }
+.chip-shield .dim { font: 600 9.5px/1 var(--mono); color: var(--ink-3); }
+.wallblock.is-selected, .wallslot.is-selected {
+  filter: drop-shadow(0 0 5px rgba(46, 158, 99, .95));
+}
+
+/* ---- defence chip ---- */
+.chip-shield { gap: 4px; }
+.shieldico { font-size: 12px; }
+
+/* ---- raid banner ---- */
+.raidbanner {
+  position: absolute; left: 8px; right: 8px; top: 8px;
+  display: flex; align-items: center; gap: 9px;
+  padding: 9px 10px;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 6px 18px rgba(10, 40, 55, .22);
+  z-index: 5;
+}
+.raidbanner.is-win  { border-left: 4px solid var(--good); }
+.raidbanner.is-loss { border-left: 4px solid var(--bad); }
+.rb-bird { font-size: 18px; line-height: 1; }
+.rb-text { flex: 1; font-size: 11.5px; line-height: 1.35; color: var(--ink-2); }
+.rb-text b { display: block; font-size: 12.5px; color: var(--ink); }
+.rb-text > b + * { display: inline; }
+.rb-x {
+  border: 0; background: none; color: var(--ink-3);
+  font-size: 13px; cursor: pointer; padding: 4px;
+}
+
+/* ---- live raid flyover ---- */
+.liveraid {
+  position: absolute; top: 22%; left: 0;
+  width: 74px; height: 50px; pointer-events: none; z-index: 4;
+}
+.liveraid svg { width: 100%; height: 100%; overflow: visible; }
+
+/* ---- seed art dots ---- */
+.treedot {
+  width: 16px; height: 16px; border-radius: 50% 50% 45% 45%;
+  background: var(--p, #3E9B5F);
+  box-shadow: 0 0 0 3px rgba(255,255,255,.8), inset -2px -2px 0 rgba(0,0,0,.14);
+  display: inline-block;
+}
+
+/* ---- 247 chart headings ---- */
+.chead {
+  margin: 22px 0 10px;
+  padding-left: 11px;
+  border-left: 3px solid var(--hue, var(--good));
+}
+.chead:first-of-type { margin-top: 6px; }
+.chead-main { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.chead-title {
+  font: 700 17px/1.1 var(--ui);
+  color: var(--ink);
+  letter-spacing: -.01em;
+}
+.chead-count { font: 700 13px/1 var(--mono); color: var(--hue, var(--good)); }
+.chead-count .dim { color: var(--ink-3); font-weight: 500; }
+.chead-blurb { display: block; font-size: 11.5px; color: var(--ink-3); margin-top: 3px; }
+.chead-bar {
+  height: 4px; border-radius: 2px; margin-top: 7px;
+  background: rgba(14, 60, 80, .1); overflow: hidden;
+}
+.chead-bar i {
+  display: block; height: 100%; width: 0;
+  background: var(--hue, var(--good));
+  border-radius: 2px;
+  transition: width .6s cubic-bezier(.2,.8,.3,1);
+}
+
+/* ---------------------------------------------------------- chart -------- */
+
+.chart { background: linear-gradient(#EAF4F6, #F4EFE2); }
+.chartscroll { flex: 1; overflow-y: auto; padding: 8px 14px 30px; }
+
+.progressline {
+  height: 7px; border-radius: 4px; background: rgba(14, 60, 80, .12);
+  overflow: hidden; margin: 6px 0 18px;
+}
+.progressline i {
+  display: block; height: 100%; border-radius: 4px;
+  background: linear-gradient(90deg, var(--good), #6ACB93);
+  transition: width .5s ease;
+}
+
+.lrow { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 20px; }
+
+.lcell {
+  position: relative;
+  width: 38px; height: 38px;
+  border: 0; border-radius: 8px;
+  background: rgba(14, 60, 80, .09);
+  color: var(--ink-3);
+  font-family: var(--tamil); font-size: 16px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  overflow: hidden; padding: 0 1px;
+  transition: transform .14s var(--pop);
+}
+.lcell:hover { transform: translateY(-2px); }
+.lcell:focus-visible { outline: 2px solid var(--sea); outline-offset: 2px; }
+.lcell.got {
+  background: var(--good); color: #fff;
+  box-shadow: 0 2px 4px rgba(46, 158, 99, .3);
+}
+.lcell .lock {
+  position: absolute; inset: auto 0 1px 0;
+  font: 600 8px/1 var(--mono); color: var(--coin); font-style: normal;
+}
+
+.gridscroll { overflow-x: auto; margin-bottom: 20px; padding-bottom: 6px; }
+.ltable { border-collapse: separate; border-spacing: 4px; }
+.ltable th {
+  font-family: var(--tamil); font-size: 12px; font-weight: 600;
+  color: var(--ink-3); padding: 0 3px; text-align: center;
+}
+.ltable th.rowlab { text-align: right; font-size: 14px; color: var(--ink-2); }
+.ltable td { padding: 0; }
+
+.chartnote {
+  font-size: 12.5px; line-height: 1.5; color: var(--ink-3);
+  margin: 0; max-width: 44ch;
+}
+
+.detail {
+  flex: none;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 14px; background: rgba(255, 255, 255, .95);
+  border-top: 1px solid rgba(14, 60, 80, .1);
+}
+.dpart {
+  font-family: var(--tamil); font-size: 24px; font-weight: 600; color: var(--ink);
+  background: rgba(14, 60, 80, .07); border-radius: 10px; padding: 5px 13px;
+}
+.dpart.dbig { background: var(--good); color: #fff; font-size: 28px; }
+.dop { font: 600 18px/1 var(--mono); color: var(--ink-3); }
+
+/* ---------------------------------------------------- idle animation ----- */
+
+.an { transform-box: fill-box; }
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes smokeup {
+    0%   { opacity: 0;   transform: translate(0, 0) scale(.5); }
+    22%  { opacity: .62; }
+    100% { opacity: 0;   transform: translate(-9px, -40px) scale(1.5); }
+  }
+  @keyframes rock    { 0%, 100% { transform: rotate(-2.4deg); } 50% { transform: rotate(2.4deg); } }
+  @keyframes sway    { 0%, 100% { transform: rotate(-3deg); }   50% { transform: rotate(3deg); } }
+  @keyframes swing   { 0%, 100% { transform: rotate(-7deg); }   50% { transform: rotate(7deg); } }
+  @keyframes shimmer { 0%, 100% { opacity: .25; transform: translateX(-3px); } 50% { opacity: .7; transform: translateX(3px); } }
+  @keyframes drift   { 0% { transform: translateX(0); } 100% { transform: translateX(26px); } }
+  @keyframes glow    { 0%, 100% { opacity: .5; } 50% { opacity: .95; } }
+
+  .an-smoke  { transform-origin: 50% 100%; animation: smokeup 3.6s ease-out infinite; }
+  .an-smoke2 { animation-delay: 1.2s; }
+  .an-smoke3 { animation-delay: 2.4s; }
+  .an-rock   { transform-origin: 50% 88%;  animation: rock 4.2s ease-in-out infinite; }
+  .an-sway   { transform-origin: 50% 100%; animation: sway 5s ease-in-out infinite; }
+  .an-swing  { transform-origin: 50% 0%;   animation: swing 3.1s ease-in-out infinite; }
+  .an-shim   { animation: shimmer 3.8s ease-in-out infinite; }
+  .an-drift  { animation: drift 7s linear infinite alternate; }
+  .an-glow   { animation: glow 4.4s ease-in-out infinite; }
+
+  /* ---- garden ambience ---- */
+  @keyframes cloudDrift { from { transform: translateX(0); } to { transform: translateX(190vw); } }
+  @keyframes sunPulse { 0%, 100% { opacity: .92; transform: scale(1); } 50% { opacity: 1; transform: scale(1.05); } }
+  @keyframes floatUp {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(.6); }
+    22%  { opacity: 1; transform: translate(-50%, -80%) scale(1.15); }
+    100% { opacity: 0; transform: translate(-50%, -190%) scale(1); }
+  }
+  @keyframes coinFly {
+    0%   { opacity: 1; transform: translate(-50%, -50%) scale(.5); }
+    70%  { opacity: 1; }
+    100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1); }
+  }
+  /* Plants breathe; ready ones lift and glow so they read across the garden. */
+  @keyframes leafSway { 0%, 100% { transform: rotate(-1.6deg); } 50% { transform: rotate(1.6deg); } }
+  @keyframes readyBob {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50%      { transform: translateY(-4px) scale(1.04); }
+  }
+  @keyframes gemFlash { 0%, 82%, 100% { opacity: .25; } 90% { opacity: .95; } }
+  @keyframes catWalk {
+    0%   { transform: translate(calc(var(--rx) * -1), 0) scaleX(1); }
+    48%  { transform: translate(var(--rx), calc(var(--ry) * .35)) scaleX(1); }
+    52%  { transform: translate(var(--rx), calc(var(--ry) * .35)) scaleX(-1); }
+    100% { transform: translate(calc(var(--rx) * -1), 0) scaleX(-1); }
+  }
+  @keyframes flyLoop {
+    0%   { transform: translate(calc(var(--rx) * -.8), calc(var(--ry) * -.6)); }
+    25%  { transform: translate(calc(var(--rx) * .7),  calc(var(--ry) * -.9)); }
+    50%  { transform: translate(calc(var(--rx) * .9),  calc(var(--ry) * .5)); }
+    75%  { transform: translate(calc(var(--rx) * -.5), calc(var(--ry) * .8)); }
+    100% { transform: translate(calc(var(--rx) * -.8), calc(var(--ry) * -.6)); }
+  }
+  @keyframes wingBeat { 0%, 100% { transform: scaleX(1); } 50% { transform: scaleX(.35); } }
+  @keyframes tailFlick { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(10deg); } }
+
+  .gsky .cloud { animation: cloudDrift linear infinite; }
+  .gsky .c1 { animation-duration: 68s; }
+  .gsky .c2 { animation-duration: 94s; animation-delay: -32s; }
+  .gsky .c3 { animation-duration: 124s; animation-delay: -74s; }
+  .gsky .sun { animation: sunPulse 6s ease-in-out infinite; }
+
+  .plant { transform-box: fill-box; transform-origin: 50% 100%; animation: leafSway 4.6s ease-in-out infinite; }
+  .plant:nth-of-type(even) { animation-duration: 5.9s; animation-direction: reverse; }
+  .plant.is-ready { animation: readyBob 1.9s ease-in-out infinite; }
+  .plant.is-ready .crown { filter: drop-shadow(0 0 6px rgba(247,208,97,.9)); }
+
+  .gemshine { transform-box: fill-box; animation: gemFlash 4.5s ease-in-out infinite; }
+  .wallblock:nth-of-type(3n) .gemshine { animation-delay: 1.4s; }
+  .wallblock:nth-of-type(3n+1) .gemshine { animation-delay: 2.7s; }
+
+  /* ---- pets, hunters, relic ---- */
+  @keyframes groundWalk {
+    0%   { transform: translate(calc(var(--rx) * -1), 0) scaleX(1); }
+    47%  { transform: translate(var(--rx), calc(var(--ry) * .4)) scaleX(1); }
+    50%  { transform: translate(var(--rx), calc(var(--ry) * .4)) scaleX(-1); }
+    97%  { transform: translate(calc(var(--rx) * -1), 0) scaleX(-1); }
+    100% { transform: translate(calc(var(--rx) * -1), 0) scaleX(1); }
+  }
+  @keyframes airLoop {
+    0%   { transform: translate(calc(var(--rx) * -.8), calc(var(--ry) * -.6)); }
+    25%  { transform: translate(calc(var(--rx) * .7),  calc(var(--ry) * -.9)); }
+    50%  { transform: translate(calc(var(--rx) * .9),  calc(var(--ry) * .5)); }
+    75%  { transform: translate(calc(var(--rx) * -.5), calc(var(--ry) * .8)); }
+    100% { transform: translate(calc(var(--rx) * -.8), calc(var(--ry) * -.6)); }
+  }
+  @keyframes hop { 0%, 100% { transform: translateY(0); } 45% { transform: translateY(-5px); } }
+  @keyframes legStep { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.6px); } }
+  @keyframes goldSweep { 0%, 70%, 100% { opacity: .08; } 82% { opacity: .5; } }
+  @keyframes relicShimmer { 0%, 100% { opacity: .55; transform: scale(1); } 50% { opacity: 1; transform: scale(1.12); } }
+  @keyframes dazedSpin { from { transform: rotate(0deg) translateX(5px); } to { transform: rotate(360deg) translateX(5px); } }
+  @keyframes raidIn {
+    0%   { transform: translateX(-40px) translateY(0) scale(.7); opacity: 0; }
+    18%  { opacity: 1; }
+    55%  { transform: translateX(48vw) translateY(26px) scale(1); }
+  }
+  @keyframes raidRepelled {
+    0%   { transform: translateX(-40px) scale(.7); opacity: 0; }
+    18%  { opacity: 1; }
+    50%  { transform: translateX(42vw) translateY(30px) scale(1); }
+    62%  { transform: translateX(38vw) translateY(18px) scale(1.05) rotate(-18deg); }
+    100% { transform: translateX(-30px) translateY(-60px) scale(.7) rotate(-30deg); opacity: 0; }
+  }
+  @keyframes raidThrough {
+    0%   { transform: translateX(-40px) scale(.7); opacity: 0; }
+    18%  { opacity: 1; }
+    50%  { transform: translateX(40vw) translateY(34px) scale(1.05); }
+    100% { transform: translateX(105vw) translateY(-10px) scale(.8); opacity: 0; }
+  }
+
+  .petorbit { transform-box: view-box; will-change: transform; }
+  .pet-rabbit { transform-box: fill-box; animation: hop 1.1s ease-in-out infinite; }
+  .pet .legs > * { transform-box: fill-box; animation: legStep .5s ease-in-out infinite; }
+  .pet .legs > *:nth-child(2n) { animation-delay: .25s; }
+  .pet-fly .wingL, .pet-fly .wingR, .pet-bee .wingL, .pet-bee .wingR,
+  .pet-owl .wingL, .pet-owl .wingR {
+    transform-box: fill-box; transform-origin: 100% 50%;
+    animation: wingBeat .22s ease-in-out infinite;
+  }
+  .pet-owl .wingL, .pet-owl .wingR { animation-duration: 1.6s; }
+  .pet-fly .wingR, .pet-bee .wingR, .pet-owl .wingR { transform-origin: 0% 50%; }
+  .pet-cat .tail, .pet-dog .tail, .pet-tiger .tail {
+    transform-box: fill-box; transform-origin: 100% 100%;
+    animation: tailFlick 2.4s ease-in-out infinite;
+  }
+
+  .goldshine { transform-box: fill-box; animation: goldSweep 5s ease-in-out infinite; }
+  .relicglow > * { transform-box: fill-box; transform-origin: 50% 50%; animation: relicShimmer 2.4s ease-in-out infinite; }
+  .relicglow > *:nth-child(2) { animation-delay: .5s; }
+  .relicglow > *:nth-child(3) { animation-delay: 1s; }
+  .relicglow > *:nth-child(4) { animation-delay: 1.5s; }
+  .is-relic .crown { filter: drop-shadow(0 0 9px rgba(255, 214, 94, .8)); }
+
+  .hunter .wingL, .hunter .wingR {
+    transform-box: fill-box; transform-origin: 100% 50%;
+    animation: wingBeat .3s ease-in-out infinite;
+  }
+  .hunter .wingR { transform-origin: 0% 50%; }
+  .hunter.is-hurt .wingL, .hunter.is-hurt .wingR { animation-duration: 2.4s; }
+  .hunter .flame { transform-box: fill-box; animation: relicShimmer 1s ease-in-out infinite; }
+  .dazed { transform-box: fill-box; transform-origin: 50% 50%; animation: dazedSpin 1.6s linear infinite; }
+  .perched { cursor: pointer; }
+
+  .liveraid.is-repelled { animation: raidRepelled 4.2s ease-in-out forwards; }
+  .liveraid.is-through  { animation: raidThrough 4.2s linear forwards; }
+}
+
+/* Short viewports: give the arc and slots less room rather than scrolling. */
+@media (max-height: 680px) {
+  .arc { width: min(64vw, 220px); }
+  .slots { padding-top: 8px; gap: 5px; }
+  .collection { padding-top: 8px; }
+}
+
+/* ---- layout editor ---- */
+.ringrow { display: flex; gap: 7px; overflow-x: auto; padding-bottom: 6px; }
+.ringcard {
+  flex: 0 0 auto; width: 88px;
+  border: 0; border-radius: 12px;
+  background: #F2F6F1;
+  padding: 8px 6px 7px;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  box-shadow: inset 0 0 0 1px rgba(14, 60, 80, .07);
+}
+.ringcard.is-locked { background: #E7EFE6; }
+.ringno { font: 700 10.5px/1 var(--mono); color: var(--ink); }
+.ringcells { font: 500 9px/1 var(--mono); color: var(--ink-3); }
+.ringfixed {
+  font: 700 10px/1 var(--mono); color: var(--good);
+  display: inline-flex; align-items: center; gap: 3px;
+}
+.ringfixed .coin { width: 10px; height: 10px; }
+.ringtoggle { display: flex; gap: 3px; margin-top: 2px; }
+.rt {
+  border: 0; border-radius: 7px; padding: 5px 7px;
+  background: #E2E8E1; color: var(--ink-3);
+  font: 700 9.5px/1 var(--ui); cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+.rt.on { background: var(--good); color: #fff; }
+.rt:not(.on):hover { background: #D4DDD2; }
+.ringadd { cursor: pointer; transition: transform .14s var(--pop); }
+.ringadd.can { background: #E4F0E2; box-shadow: inset 0 0 0 1.5px var(--good); }
+.ringadd:hover { transform: translateY(-2px); }
+.ringadd.is-off { opacity: .45; cursor: not-allowed; }
+
+/* ---- owned pets ---- */
+.petlist { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.petchip {
+  border: 0; border-radius: 999px; padding: 4px 9px;
+  background: #E4F0E2; color: #2C6B3F;
+  font: 600 11px/1 var(--ui); cursor: pointer;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.petchip .x { color: var(--ink-3); font-size: 10px; }
+.petchip:hover { background: #D6E8D3; }
+.seedart { position: relative; }
+.petn {
+  position: absolute; right: -8px; top: -3px;
+  font: 700 9px/1 var(--mono); color: var(--good);
+}
+
+/* Ready plants glow through the soil face so the whole plot reads as tappable. */
+.soil.has-plant .soilface { transition: fill .18s ease; }
+.soil:hover .soilface { fill: #A67B4E; }
+
+/* ---- selected cell panel ---- */
+.cellpanel { display: flex; align-items: center; gap: 12px; }
+.cp-move {
+  flex: none;
+  display: grid; grid-template-columns: repeat(3, 20px); grid-template-rows: repeat(3, 20px);
+  gap: 2px;
+}
+.mv {
+  border: 0; border-radius: 6px; padding: 0;
+  background: #E4EAE6; color: var(--ink-2);
+  font-size: 9px; line-height: 1; cursor: pointer;
+  transition: background .14s ease, transform .12s var(--pop);
+}
+.mv:hover:not(:disabled) { background: var(--good); color: #fff; transform: scale(1.12); }
+.mv:disabled { opacity: .3; cursor: default; }
+.mv-up { grid-area: 1 / 2; } .mv-left { grid-area: 2 / 1; }
+.mv-right { grid-area: 2 / 3; } .mv-down { grid-area: 3 / 2; }
+.cp-info { flex: 1; min-width: 0; }
+.cp-info b { display: block; font: 700 14px/1.2 var(--ui); color: var(--ink); }
+.cp-info .dim { display: block; font-size: 11.5px; color: var(--ink-3); margin-top: 2px; }
+.cp-acts { display: flex; align-items: center; gap: 6px; }
+.btn-flip {
+  border: 0; border-radius: 11px; padding: 9px 11px;
+  background: #E8EEEA; color: var(--ink-2);
+  font: 600 11.5px/1 var(--ui); cursor: pointer; white-space: nowrap;
+  box-shadow: 0 2px 0 #D3DCD7;
+  transition: transform .14s var(--pop);
+}
+.btn-flip:hover { transform: translateY(-2px); }
+
+/* selection is a ring on the diamond, never a box */
+.selring { pointer-events: none; filter: drop-shadow(0 0 4px rgba(255,224,138,.9)); }
+.slotface { transition: fill-opacity .16s ease; }
+.wallslot:hover .slotface { fill-opacity: .45; }
+
+/* ---- garden behind the puzzle ---- */
+.puzzlebg { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.pbgstage {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: 12% 6% 22%;
+  opacity: .5;
+  filter: saturate(.75) blur(1.2px);
+}
+.pbgstage .gardensvg { width: 100%; height: 100%; }
+.puzzle .slots, .puzzle .arcwrap, .puzzle .hintbar,
+.puzzle .bonusbar, .puzzle .wordpreview { position: relative; z-index: 2; }
+/*
+ * The top bar has to outrank its siblings, not tie with them. Its popovers are
+ * its children, so their own z-index only competes inside the stacking context
+ * the bar creates — at a tie the later element in the DOM wins, and the word
+ * slots were painting straight over the level tip.
+ */
+.puzzle .topbar { position: relative; z-index: 5; }
+.puzzle .arc-disc { background: rgba(255,255,255,.82); }
+.puzzle .bonus-pill, .puzzle .cell { backdrop-filter: blur(2px); }
+
+/* =========================================================== v2 controls == */
+
+/* ---- bottom bar ---- */
+.gbar { gap: 5px; padding: 9px 9px 0; }
+.gtab {
+  gap: 3px; padding: 8px 3px 7px; border-radius: 15px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(10,40,55,.1), 0 3px 8px rgba(10,40,55,.07);
+}
+.gtab .gt-ico { font-size: 18px; height: 20px; display: flex; align-items: center; justify-content: center; }
+.gtab .gt-l { font: 700 11px/1 var(--ui); letter-spacing: -.01em; }
+.gtab .gt-sub {
+  font: 600 8.5px/1.2 var(--mono); color: var(--ink-3);
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.gtab.is-on { background: var(--ink); color: #fff; }
+.gtab.is-on .gt-sub { color: rgba(255,255,255,.72); }
+.gtab.can { background: linear-gradient(#48BB84, var(--good)); color: #fff; box-shadow: 0 3px 0 #1F7A4A; }
+.gtab.can .gt-sub { color: rgba(255,255,255,.9); }
+.gtab.is-off { background: #EEF1EE; box-shadow: none; opacity: .55; }
+.wdot {
+  width: 15px; height: 15px; border-radius: 4px; display: inline-block;
+  box-shadow: inset 0 -2px 0 rgba(0,0,0,.2), 0 0 0 1.5px rgba(255,255,255,.7);
+}
+
+/* ---- cell panel ---- */
+.gdrawer { padding: 10px 11px 8px; }
+.cellpanel { display: flex; flex-direction: column; gap: 9px; }
+.cp-top { display: flex; align-items: flex-start; gap: 10px; }
+.cp-title { flex: 1; min-width: 0; }
+.cp-title b { display: block; font: 700 15px/1.2 var(--ui); color: var(--ink); }
+.cp-title .dim { display: block; font-size: 11.5px; color: var(--ink-3); margin-top: 2px; }
+.cp-right { display: flex; align-items: center; gap: 6px; flex: none; }
+.cp-x {
+  border: 0; background: #EDF1EE; color: var(--ink-3);
+  width: 30px; height: 30px; border-radius: 10px; cursor: pointer; font-size: 12px;
+}
+.cp-x:hover { background: #E0E6E2; }
+.cp-bottom { display: flex; align-items: center; gap: 10px; }
+.cp-acts { flex: 1; display: flex; gap: 6px; flex-wrap: wrap; }
+
+.act {
+  border: 0; border-radius: 12px; padding: 8px 12px;
+  display: inline-flex; flex-direction: column; align-items: center; gap: 2px;
+  cursor: pointer; transition: transform .14s var(--pop);
+  font-family: var(--ui);
+}
+.act:hover:not(.is-off) { transform: translateY(-2px); }
+.act-l { font: 700 11.5px/1 var(--ui); white-space: nowrap; }
+.act-n { display: inline-flex; align-items: center; gap: 3px; font: 700 10.5px/1 var(--mono); }
+.act-n .coin { width: 11px; height: 11px; }
+.act-buy { background: linear-gradient(#48BB84, var(--good)); color: #fff; box-shadow: 0 3px 0 #1F7A4A; }
+.act-sell { background: #F1E7D2; color: #7A5F32; box-shadow: 0 3px 0 #DCCFB4; }
+.act-flip { background: #E9EEF2; color: var(--ink-2); box-shadow: 0 3px 0 #D3DBE1; padding: 9px 12px; }
+.act-max { background: none; color: var(--good); font: 700 12px/1 var(--mono); letter-spacing: .1em; padding: 10px 4px; }
+.act.is-off { background: #E4E8E5; color: #96A29A; box-shadow: 0 3px 0 #D2D7D3; cursor: not-allowed; }
+
+.cp-move {
+  flex: none; display: grid;
+  grid-template-columns: repeat(3, 22px); grid-template-rows: repeat(3, 22px); gap: 2px;
+}
+.mv { border: 0; border-radius: 7px; padding: 0; background: #EDF1EE; color: var(--ink-2);
+      font-size: 9px; cursor: pointer; transition: background .14s ease, transform .12s var(--pop); }
+.mv:hover:not(:disabled) { background: var(--good); color: #fff; transform: scale(1.1); }
+.mv:disabled { opacity: .28; cursor: default; }
+
+/* ---- seed / pet cards ---- */
+.card {
+  flex: 0 0 auto; width: 82px;
+  border: 0; border-radius: 14px; background: #fff;
+  padding: 9px 6px 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(10,40,55,.1), 0 3px 8px rgba(10,40,55,.07);
+  transition: transform .15s var(--pop);
+}
+.card:hover:not(.is-off) { transform: translateY(-3px); }
+.card.is-off { background: #F0F3F1; box-shadow: none; opacity: .5; cursor: not-allowed; }
+.card.is-owned { box-shadow: inset 0 0 0 2px var(--good), 0 3px 8px rgba(10,40,55,.07); }
+.card-art { position: relative; height: 22px; display: flex; align-items: center; font-size: 19px; }
+.card-name { font: 700 11.5px/1.1 var(--ui); color: var(--ink); }
+.card-meta { display: inline-flex; align-items: center; gap: 3px; font: 700 10.5px/1 var(--mono); color: var(--ink-2); }
+.card-meta .coin { width: 11px; height: 11px; }
+.card-gain { font: 600 9px/1 var(--mono); color: var(--good); }
+
+/* ---- zoom ---- */
+.zoomer { position: absolute; right: 8px; bottom: 8px; display: flex; flex-direction: column; gap: 4px; z-index: 3; }
+.zbtn {
+  width: 32px; height: 32px; border: 0; border-radius: 10px;
+  background: rgba(255,255,255,.94); color: var(--ink-2);
+  font: 700 15px/1 var(--ui); cursor: pointer;
+  box-shadow: 0 2px 6px rgba(10,40,55,.18);
+  transition: transform .13s var(--pop);
+}
+.zbtn:hover { transform: scale(1.08); background: #fff; }
+.zbtn:active { transform: scale(.94); }
+.gstage .gardensvg { transition: transform .22s cubic-bezier(.2,.8,.3,1); transform-origin: center center; }
+
+/* ---- selection lands on the object, not the ground ---- */
+.plant.is-lit, .wallblock.is-lit {
+  filter: drop-shadow(0 0 0 #FFE08A) drop-shadow(0 0 7px rgba(255,208,90,.95))
+          drop-shadow(0 0 14px rgba(255,190,60,.55));
+}
+
+/* ---- sky over the puzzle ---- */
+.puzzlebg .sun {
+  position: absolute; right: 14%; top: 6%;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: radial-gradient(circle at 40% 38%, var(--sun-core, #FFF8DC),
+                              var(--sun-mid, #FFE08A) 58%, var(--sun-edge, #FFCF57));
+  box-shadow: 0 0 28px 10px var(--sun-glow, rgba(255,222,130,.4));
+  animation: sunPulse 6s ease-in-out infinite;
+}
+.puzzlebg .cloud {
+  position: absolute; background: var(--cloud-a, rgba(255,255,255,.8)); border-radius: 999px;
+  animation: cloudDrift linear infinite;
+}
+.puzzlebg .cloud::before, .puzzlebg .cloud::after {
+  content: ''; position: absolute; background: inherit; border-radius: 999px;
+}
+.puzzlebg .c1 { width: 88px; height: 38px; top: 8%;  left: -25%; animation-duration: 72s; }
+.puzzlebg .c2 { width: 62px; height: 27px; top: 19%; left: -25%; opacity: .78; animation-duration: 98s; animation-delay: -40s; }
+.puzzlebg .c3 { width: 112px; height: 48px; top: 2%; left: -35%; opacity: .62; animation-duration: 126s; animation-delay: -70s; }
+
+.act-reap { background: linear-gradient(#F5C244, var(--coin)); color: #4A3200; box-shadow: 0 3px 0 #C08A0E; }
+
+/* ---- the wheel's glowing rim, and the light that sweeps it ---- */
+.arc-halo {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; overflow: visible;
+}
+.halo-base {
+  fill: none; stroke: rgba(255, 208, 90, .45); stroke-width: 3;
+  filter: drop-shadow(0 0 5px rgba(255, 196, 60, .5));
+}
+.halo-trail {
+  fill: none; stroke: #FFE9A8; stroke-width: 4; stroke-linecap: round;
+  /* 2 * pi * 114 — one full lap of the rim */
+  stroke-dasharray: 716; stroke-dashoffset: 716;
+  transform: rotate(-90deg); transform-origin: 120px 120px;
+  opacity: 0;
+  filter: drop-shadow(0 0 7px rgba(255, 214, 94, .95));
+}
+.halo-comet { opacity: 0; transform-origin: 120px 120px; }
+.comet-head { fill: #FFF6D8; filter: drop-shadow(0 0 8px rgba(255, 224, 138, 1)); }
+.comet-tail { fill: rgba(255, 214, 94, .45); filter: blur(3px); }
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes haloDraw {
+    0%   { stroke-dashoffset: 716; opacity: 0; }
+    12%  { opacity: 1; }
+    70%  { stroke-dashoffset: 0; opacity: 1; }
+    100% { stroke-dashoffset: 0; opacity: 0; }
+  }
+  @keyframes cometRun {
+    0%   { transform: rotate(0deg); opacity: 0; }
+    10%  { opacity: 1; }
+    82%  { transform: rotate(360deg); opacity: 1; }
+    100% { transform: rotate(390deg); opacity: 0; }
+  }
+  @keyframes rimPulse {
+    0%, 100% { stroke-opacity: .35; }
+    50%      { stroke-opacity: .7; }
+  }
+  .halo-base { animation: rimPulse 3.2s ease-in-out infinite; }
+  .arc-halo.is-sweeping .halo-trail { animation: haloDraw 1.35s cubic-bezier(.3,.7,.3,1) forwards; }
+  .arc-halo.is-sweeping .halo-comet { animation: cometRun 1.35s cubic-bezier(.3,.7,.3,1) forwards; }
+}
+
+/* ---- pan + zoom ---- */
+.gstage { cursor: grab; touch-action: none; }
+.gstage.is-panning { cursor: grabbing; }
+.gstage .gardensvg { transform-origin: center center; will-change: transform; }
+
+/* ---- a grazer taking its time ---- */
+.liveraid.is-ground {
+  transition: left 1.6s cubic-bezier(.4,.1,.35,1), top 1.6s cubic-bezier(.4,.1,.35,1);
+  animation: none;
+  width: 74px; height: 54px;
+  left: -80px; top: 40%;
+}
+.liveraid.is-ground.is-arriving { opacity: 1; }
+.liveraid.is-ground.is-leaving { opacity: 0; transition: opacity .9s ease, left 1.4s ease, top 1.4s ease; }
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes graze {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    40%      { transform: translateY(3px) rotate(4deg); }
+    70%      { transform: translateY(3px) rotate(-2deg); }
+  }
+  .liveraid.is-ground.is-eating svg { animation: graze 1s ease-in-out infinite; transform-origin: 60% 80%; }
+}
+
+/* ---- 247 chart: a grid that fits, not a table that scrolls ---- */
+.lgrid {
+  display: grid;
+  grid-template-columns: 1.1fr repeat(12, 1fr);
+  gap: 3px;
+  margin-bottom: 20px;
+}
+.lgrid-corner { display: block; }
+.lgrid-head, .lgrid-row {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; color: var(--ink-3);
+  min-width: 0;
+}
+.lgrid-row { justify-content: flex-end; padding-right: 3px; color: var(--ink-2); font-size: 12px; }
+.lgrid .lcell {
+  width: 100%; height: auto; aspect-ratio: 1;
+  min-width: 0; font-size: 12px; border-radius: 6px;
+}
+.lgrid .lcell .ta { font-size: 12px; }
+.lrow .lcell { width: 38px; height: 38px; }
+.lcell .lock { display: none; }
+
+/* ---- the banyan reward card ---- */
+.reliccard {
+  display: flex; align-items: center; gap: 12px;
+  background: rgba(255, 255, 255, .8);
+  border: 1px solid rgba(14, 60, 80, .1);
+  border-radius: 16px;
+  padding: 12px 14px;
+  margin: 4px 0 8px;
+}
+.reliccard.is-won { background: linear-gradient(90deg, rgba(46,158,99,.16), rgba(255,255,255,.85)); border-color: rgba(46,158,99,.4); }
+.relicart { flex: none; width: 74px; }
+.relicsvg { width: 100%; height: auto; display: block; }
+.relicinfo { flex: 1; min-width: 0; }
+.relicinfo b { display: block; font: 700 14px/1.2 var(--ui); color: var(--ink); }
+.relicinfo > span { display: block; font-size: 12px; color: var(--ink-2); margin-top: 3px; line-height: 1.45; }
+.relicnote { font-size: 11px !important; color: var(--ink-3) !important; margin-top: 6px !important; }
+
+/* The banner sets display:flex, which beats the plain [hidden] attribute —
+   without this it sits there as an empty white bar above the garden. */
+.raidbanner[hidden] { display: none; }
+
+/* ---- peacock: folded most of the time, fanned now and then ---- */
+.pet-peacock .pfan {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  transform: scaleX(.14) scaleY(.5);
+  opacity: .85;
+}
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes fanOpen {
+    0%, 62%  { transform: scaleX(.14) scaleY(.5); }
+    72%      { transform: scaleX(1.05) scaleY(1.04); }
+    76%      { transform: scaleX(1) scaleY(1); }
+    92%      { transform: scaleX(1) scaleY(1); }
+    100%     { transform: scaleX(.14) scaleY(.5); }
+  }
+  @keyframes fanShimmer { 0%, 60%, 100% { opacity: .85; } 78% { opacity: 1; } }
+  .pet-peacock .pfan { animation: fanOpen 11s cubic-bezier(.34,1.4,.64,1) infinite, fanShimmer 11s ease-in-out infinite; }
+  .petorbit:nth-of-type(even) .pet-peacock .pfan { animation-delay: -5.5s; }
+}
+
+/* ---- wheel size picker ---- */
+.wheelcard .card-art { font-size: 22px; color: var(--ink-2); }
+.wheelcard.is-owned .card-art { color: var(--good); }
+
+/* ================================================== sky themes =========== */
+/*
+ * A theme is a set of custom properties (see art/sky.js) plus the id stamped
+ * on #app, which these rules hang the extra weather off. The garden and the
+ * puzzle backdrop share every rule, so a sky bought in one shows up in both.
+ */
+
+/* The land is lit by the sky above it: a wash over the stage, transparent by
+   day, so a night garden is not a daylit garden on a dark background. */
+.gstage::after, .pbgstage::after {
+  content: ''; position: absolute; inset: 0;
+  background: var(--haze, transparent);
+  pointer-events: none;
+  transition: background .5s ease;
+}
+
+/* ============================================ sky depth, shared by themes == */
+/*
+ * A gradient with a disc on it reads as wallpaper. What makes a sky look like
+ * air is depth: light pooling at the horizon, ridgelines at two distances, and
+ * clouds lit from above and shaded underneath. All CSS shapes — no images, no
+ * requests, nothing added to the bundle.
+ */
+
+/* Light pooling where the sun meets the land. This is the single biggest
+   difference between "a coloured rectangle" and "a sky", and it does most of
+   the work for dawn and dusk. */
+.gsky .skyglow, .puzzlebg .skyglow {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(120% 46% at 78% 74%, var(--horizon, transparent) 0%, transparent 68%);
+}
+
+/* Two ridgelines. The far one is flatter and paler, the near one taller and
+   darker — that difference alone is what reads as distance. */
+.gsky .hills, .puzzlebg .hills {
+  /* Width must be explicit. An <svg> is a replaced element: with width auto it
+     takes its size from the viewBox ratio and IGNORES `right`, so the treeline
+     came out 158px wide in a 536px frame instead of spanning it. */
+  position: absolute; left: -4%; width: 108%; pointer-events: none;
+  display: block;
+}
+/* Three planes, each paler and flatter than the one in front. Atmospheric
+   perspective is what a painted background uses instead of a shadow. */
+.gsky .hills-far, .puzzlebg .hills-far  { bottom: 33%; height: 17%; opacity: .38; }
+.gsky .hills-near, .puzzlebg .hills-near { bottom: 29%; height: 14%; opacity: .58; }
+/* The nearest plane is also the darkest, or the trees vanish into the ridge
+   they stand on. */
+.gsky .treeline, .puzzlebg .treeline     { bottom: 27.5%; height: 6.5%; opacity: .9;
+                                           filter: brightness(.82) saturate(1.1); }
+
+/* The land the hills stand on. Without it the sky gradient ran all the way
+   to the bottom of the frame, so a dusk garden appeared to float in orange
+   air with no ground under it. */
+.gsky .ground, .puzzlebg .ground {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 32%;
+  pointer-events: none;
+  background: linear-gradient(var(--ground, #BFDCAF), color-mix(in srgb, var(--ground, #BFDCAF) 82%, #000 18%));
+}
+
+/* Clouds are drawn shapes now: a real cumulus silhouette with a lit crown and
+   a shaded base, rather than a pill with two bumps on it. */
+.gsky .cloud, .puzzlebg .cloud {
+  position: absolute; display: block; background: none;
+  border-radius: 0; overflow: visible;
+  filter: drop-shadow(0 2px 3px rgba(30, 50, 70, .1));
+}
+.gsky .cloud::before, .gsky .cloud::after,
+.puzzlebg .cloud::before, .puzzlebg .cloud::after { content: none; }
+
+/* Shafts of light from the sun. Subtle enough to read as air, not as beams. */
+.rays {
+  position: absolute; inset: -20% -30% 20% -30%; pointer-events: none;
+  opacity: .28;
+  background: repeating-conic-gradient(from 190deg at 80% 6%,
+    var(--sun-glow) 0deg 2deg, transparent 2deg 13deg);
+  -webkit-mask-image: radial-gradient(70% 70% at 80% 8%, #000 10%, transparent 72%);
+  mask-image: radial-gradient(70% 70% at 80% 8%, #000 10%, transparent 72%);
+}
+[data-sky="monsoon"] .rays, [data-sky="mist"] .rays, [data-sky="night"] .rays { display: none; }
+
+/* A frame darkening, the oldest trick for making flat colour look photographed. */
+.vignette {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(125% 88% at 50% 42%, transparent 52%, rgba(12, 26, 40, .2) 100%);
+}
+
+/* A broader, softer bloom than a box-shadow alone can give. Its size is a
+   per-theme token: a low sun through dusty air throws a wide halo, a moon in
+   clear night air throws almost none. One size for both washed the moon out. */
+.gsky .sun::before, .puzzlebg .sun::before {
+  content: ''; position: absolute; inset: calc(var(--sun-bloom, 150) * -1%);
+  border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, var(--sun-glow, transparent) 0%, transparent 62%);
+  /* Behind the disc, not over it. In front, the glow laid a veil across the
+     whole face and flattened the moon's crescent back into a plain circle. */
+  z-index: -1;
+}
+
+/* ---- night: a cratered crescent moon, layered stars, the odd shooting star ---- */
+/*
+ * The crescent is a mask, and it has to be. An inset box-shadow paints between
+ * background-colour and background-image — and the disc's face IS a background
+ * image, a radial gradient — so a shadow crescent was drawn underneath it and
+ * never seen at all. A mask cuts a real bite out of the disc, sky and stars
+ * showing through it, and it clips the craters to the lit face for free.
+ */
+[data-sky="night"] .gsky .sun, [data-sky="night"] .puzzlebg .sun {
+  box-shadow: 0 0 18px 5px var(--sun-glow);
+  -webkit-mask-image: radial-gradient(ellipse 62% 62% at 116% 20%, transparent 0 99%, #000 100%);
+  mask-image: radial-gradient(ellipse 62% 62% at 116% 20%, transparent 0 99%, #000 100%);
+}
+[data-sky="night"] .gsky .sun::after, [data-sky="night"] .puzzlebg .sun::after {
+  content: ''; position: absolute; inset: 0; border-radius: 50%;
+  pointer-events: none; opacity: .5;
+  background-image:
+    radial-gradient(4px 4px at 34% 62%, #C9C6B4, transparent),
+    radial-gradient(3px 3px at 52% 34%, #C9C6B4, transparent),
+    radial-gradient(2px 2px at 28% 38%, #C9C6B4, transparent);
+}
+
+.stars { position: absolute; inset: 0 0 30% 0; pointer-events: none; }
+.stars-far {
+  background-image:
+    radial-gradient(1px 1px at 12% 18%, #CFDBFF, transparent),
+    radial-gradient(1px 1px at 31% 41%, #FFF, transparent),
+    radial-gradient(1px 1px at 47% 9%,  #CFDBFF, transparent),
+    radial-gradient(1px 1px at 66% 33%, #FFF, transparent),
+    radial-gradient(1px 1px at 79% 14%, #CFDBFF, transparent),
+    radial-gradient(1px 1px at 92% 39%, #FFF, transparent),
+    radial-gradient(1px 1px at 24% 52%, #CFDBFF, transparent),
+    radial-gradient(1px 1px at 58% 57%, #FFF, transparent),
+    radial-gradient(1px 1px at 86% 61%, #CFDBFF, transparent);
+  opacity: .55;
+}
+.stars-near {
+  background-image:
+    radial-gradient(1.9px 1.9px at 19% 12%, #FFF, transparent),
+    radial-gradient(1.7px 1.7px at 42% 27%, #EAF0FF, transparent),
+    radial-gradient(2.1px 2.1px at 61% 8%,  #FFF, transparent),
+    radial-gradient(1.6px 1.6px at 74% 45%, #EAF0FF, transparent),
+    radial-gradient(1.9px 1.9px at 88% 22%, #FFF, transparent),
+    radial-gradient(1.7px 1.7px at 8%  44%, #EAF0FF, transparent),
+    radial-gradient(1.6px 1.6px at 35% 61%, #FFF, transparent);
+}
+/*
+ * A shooting star is a bright point with something trailing off it. The first
+ * version was a 2px bar with a gradient on it, which is a dash — it had no
+ * head, and a tail of constant width reads as a drawn line however it fades.
+ * The tail is a triangle now, tapering to nothing behind a round, glowing head,
+ * and the whole thing is aligned to the direction it actually travels.
+ */
+.shooter {
+  position: absolute; top: 13%; left: 72%; width: 104px; height: 7px;
+  pointer-events: none; opacity: 0;
+  rotate: 154deg;                 /* along the path in `shoot`: down and left */
+}
+.shooter::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, rgba(214, 230, 255, 0) 0%,
+                              rgba(226, 238, 255, .55) 62%, #FFF 100%);
+  clip-path: polygon(0 50%, 100% 0, 100% 100%);
+}
+.shooter::after {
+  content: ''; position: absolute; right: -1px; top: 50%;
+  width: 5px; height: 5px; margin-top: -2.5px;
+  border-radius: 50%; background: #FFF;
+  box-shadow: 0 0 7px 2.5px rgba(226, 238, 255, .9);
+}
+
+.firefly {
+  position: absolute; width: 4px; height: 4px; border-radius: 50%;
+  background: #EEF9A8; box-shadow: 0 0 8px 3px rgba(226, 246, 130, .65);
+  opacity: 0; pointer-events: none;
+}
+
+/* ---- monsoon: two rain sheets for parallax, and lightning behind them ---- */
+/*
+ * Rain has to be drops, not rails. A repeating gradient alone makes lines that
+ * run the whole height of the frame and slide — which reads as a moving screen
+ * door, not as falling water. A second repeating gradient, banded ACROSS the
+ * first, masks each line into short streaks with gaps between them; the two
+ * move together because they are on the same element.
+ */
+.rain { position: absolute; inset: -30% -30% -10% -30%; pointer-events: none; }
+.rain-far {
+  background-image: repeating-linear-gradient(76deg,
+    rgba(226, 238, 245, 0) 0 15px,
+    rgba(226, 238, 245, .5) 15px 15.9px,
+    rgba(226, 238, 245, 0) 15.9px 38px);
+  -webkit-mask-image: repeating-linear-gradient(166deg,
+    #000 0 11px, rgba(0,0,0,.15) 13px, transparent 15px 46px);
+  mask-image: repeating-linear-gradient(166deg,
+    #000 0 11px, rgba(0,0,0,.15) 13px, transparent 15px 46px);
+  opacity: .4;
+}
+.rain-near {
+  background-image: repeating-linear-gradient(72deg,
+    rgba(240, 248, 252, 0) 0 11px,
+    rgba(240, 248, 252, .72) 11px 12.4px,
+    rgba(240, 248, 252, 0) 12.4px 27px);
+  -webkit-mask-image: repeating-linear-gradient(162deg,
+    #000 0 17px, rgba(0,0,0,.2) 20px, transparent 23px 58px);
+  mask-image: repeating-linear-gradient(162deg,
+    #000 0 17px, rgba(0,0,0,.2) 20px, transparent 23px 58px);
+  opacity: .55;
+}
+.flash {
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(rgba(226, 240, 255, .8), rgba(226, 240, 255, 0) 55%);
+  opacity: 0;
+}
+
+/* ---- mist: banks at two depths, one of them hugging the ground ---- */
+.fog { position: absolute; inset: 0; pointer-events: none; }
+.fog-high {
+  background-image:
+    linear-gradient(rgba(255,255,255,0) 18%, rgba(255,255,255,.9) 31%, rgba(255,255,255,0) 45%),
+    linear-gradient(rgba(255,255,255,0) 46%, rgba(255,255,255,.6) 57%, rgba(255,255,255,0) 69%);
+  filter: blur(2px);
+}
+.fog-low {
+  background-image:
+    linear-gradient(rgba(255,255,255,0) 62%, rgba(255,255,255,.7) 76%, rgba(255,255,255,.26) 100%);
+  filter: blur(3px);
+}
+
+/* ---- day and dawn: birds, three strokes each at this distance ---- */
+/*
+ * Rotation and scale go in their own longhands, not `transform`: the drift
+ * animation owns `transform`, and setting it here would be overwritten the
+ * moment the animation started.
+ */
+.bird {
+  position: absolute; width: 11px; height: 5px; pointer-events: none;
+  border-top: 1.6px solid rgba(70, 90, 105, .5);
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  rotate: -6deg;
+}
+.bird::after {
+  content: ''; position: absolute; left: 9px; top: -1.6px;
+  width: 11px; height: 5px;
+  border-top: 1.6px solid rgba(70, 90, 105, .4);
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  rotate: 9deg;
+}
+.bird.b1 { top: 15%; left: -12%; }
+.bird.b2 { top: 21%; left: -20%; scale: .78; }
+.bird.b3 { top: 11%; left: -32%; scale: .62; }
+[data-sky="dawn"] .bird { border-top-color: rgba(60, 48, 70, .5); }
+[data-sky="dawn"] .bird::after { border-top-color: rgba(60, 48, 70, .4); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .stars-far  { animation: twinkle 5.5s ease-in-out infinite; }
+  .stars-near { animation: twinkle 3.4s ease-in-out infinite reverse; }
+  .shooter    { animation: shoot 14s linear infinite; }
+  .firefly    { animation: fly 13s ease-in-out infinite; }
+  .rain-far   { animation: rainFall .78s linear infinite; }
+  .rain-near  { animation: rainFall .42s linear infinite; }
+  .flash      { animation: lightning 11s linear infinite; }
+  .fog-high   { animation: fogRoll 26s ease-in-out infinite; }
+  .fog-low    { animation: fogRoll 38s ease-in-out infinite reverse; }
+  .bird.b1 { animation: birdBy 46s linear infinite; }
+  .bird.b2 { animation: birdBy 61s linear infinite; animation-delay: -22s; }
+  .bird.b3 { animation: birdBy 78s linear infinite; animation-delay: -51s; }
+
+  @keyframes twinkle { 0%, 100% { opacity: .5; } 50% { opacity: 1; } }
+  @keyframes rainFall { from { transform: translate(0, 0); } to { transform: translate(-24px, 84px); } }
+  @keyframes fogRoll {
+    0%, 100% { transform: translateX(-4%); opacity: .8; }
+    50%      { transform: translateX(4%);  opacity: 1; }
+  }
+  @keyframes fly {
+    0%, 100% { transform: translate(0, 0);        opacity: 0; }
+    12%      { opacity: .95; }
+    35%      { transform: translate(26px, -18px); opacity: .5; }
+    60%      { transform: translate(-14px, -34px); opacity: 1; }
+    85%      { transform: translate(18px, -12px); opacity: .35; }
+  }
+  @keyframes shoot {
+    0%, 92%   { opacity: 0; transform: translateX(0); }
+    93%       { opacity: 0; }
+    94.5%     { opacity: 1; }
+    98%       { opacity: .9; }
+    99.6%, 100% { opacity: 0; transform: translateX(230px); }
+  }
+  @keyframes lightning {
+    0%, 88%, 100% { opacity: 0; }
+    89% { opacity: .85; }
+    90% { opacity: .08; }
+    91% { opacity: .7; }
+    94% { opacity: 0; }
+  }
+  @keyframes birdBy {
+    from { transform: translate(0, 0); }
+    50%  { transform: translate(70vw, -14px); }
+    to   { transform: translate(150vw, 6px); }
+  }
+}
+
+/* ---- the sky picker ---- */
+.skycard .card-art { font-size: 22px; }
+.skyswatch {
+  display: block; width: 100%; height: 26px; border-radius: 7px; margin-bottom: 5px;
+  box-shadow: inset 0 0 0 1px rgba(10, 40, 55, .12);
+}
+.card.is-using { outline: 2px solid var(--good); outline-offset: 1px; }
+
+/* ---- the small icon chips: sky and sound ---- */
+/*
+ * Icon-only so six chips fit the width four used to. They sit at the end of
+ * the row, after the counters, because they are settings rather than status.
+ */
+.chip-mini {
+  padding: 0; width: 30px; min-width: 30px; height: 28px;
+  justify-content: center; font-size: 15px; line-height: 1;
+}
+.chip-level { gap: 4px; }
+.chip-level .qmark {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 13px; height: 13px; border-radius: 50%;
+  background: var(--ink-3); color: #fff;
+  font: 700 9px/1 var(--ui);
+}
+.puzzle .topbar { flex-wrap: nowrap; }
+
+/* ---- the in-play sky picker ---- */
+/*
+ * A popover, not the garden's drawer: a drawer here would cover the wheel, and
+ * mid-round the only useful action is switching between skies already owned.
+ * Buying still belongs in the garden, so this says where the rest are.
+ */
+.skypop {
+  position: absolute; top: 46px; right: 8px; z-index: 30;
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  max-width: min(300px, calc(100% - 16px));
+  padding: 8px; border-radius: 14px;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 6px 20px rgba(10, 40, 55, .24);
+}
+.skypop[hidden] { display: none; }
+.skydot {
+  position: relative; width: 34px; height: 34px; padding: 0;
+  border: 0; border-radius: 10px; overflow: hidden; cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(10, 40, 55, .14);
+}
+.skydot-sw { position: absolute; inset: 0; }
+.skydot-ico { position: relative; font-size: 15px; line-height: 34px; }
+.skydot.is-using { box-shadow: 0 0 0 2px var(--good); }
+.skydot-note { font: 600 10px/1.3 var(--ui); color: var(--ink-3); max-width: 76px; }
+
+/* ---- the level tip, anchored to the chip that opens it ---- */
+/*
+ * A panel, not a toast. This is two sentences of explanation; a pill in the
+ * middle of the screen, 460px from the chip you tapped, was gone before it
+ * could be read and pointed at nothing.
+ */
+.tippop {
+  position: absolute; top: 46px; right: 8px; z-index: 30;
+  width: min(268px, calc(100% - 16px));
+  padding: 11px 13px 12px; border-radius: 14px;
+  background: rgba(255, 255, 255, .97);
+  box-shadow: 0 8px 24px rgba(10, 40, 55, .26);
+  font: 500 12.5px/1.45 var(--ui); color: var(--ink-2);
+  text-align: left;
+}
+.tippop[hidden] { display: none; }
+.tippop .tip-h {
+  display: block; margin-bottom: 5px;
+  font: 800 14px/1 var(--ui); color: var(--ink);
+}
+.tippop p { margin: 0 0 6px; }
+.tippop p:last-child { margin-bottom: 0; }
+.tippop em { font-style: italic; }
+.tippop .tip-f {
+  margin-top: 8px; padding-top: 7px;
+  border-top: 1px solid rgba(14, 60, 80, .12);
+  color: var(--ink-3);
+}
+.hint[data-restart] .hi { font-size: 15px; }
+
+/* ---- music and effects, switched separately ---- */
+/*
+ * Not one mute button. The certification requirements ask for granular audio
+ * controls and specifically say to avoid an overall mute. YouTube's own mute
+ * overrides both of these and is not shown here at all — it is not the
+ * player's setting to change from inside a game.
+ */
+.soundpop {
+  position: absolute; top: 46px; right: 8px; z-index: 30;
+  width: 178px; padding: 6px; border-radius: 14px;
+  background: rgba(255, 255, 255, .97);
+  box-shadow: 0 8px 24px rgba(10, 40, 55, .26);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.soundpop[hidden] { display: none; }
+.sndrow {
+  display: flex; align-items: center; gap: 9px;
+  width: 100%; padding: 8px 9px; border: 0; border-radius: 10px;
+  background: none; cursor: pointer; text-align: left;
+  font: 600 13px/1 var(--ui); color: var(--ink-2);
+}
+.sndrow:hover { background: rgba(14, 60, 80, .06); }
+.snd-ico { font-size: 15px; line-height: 1; }
+.snd-label { flex: 1; }
+.snd-sw {
+  flex: none; width: 34px; height: 20px; border-radius: 999px;
+  background: rgba(14, 60, 80, .22); position: relative;
+  transition: background .16s ease;
+}
+.snd-sw i {
+  position: absolute; top: 2px; left: 2px;
+  width: 16px; height: 16px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 3px rgba(10, 40, 55, .3);
+  transition: transform .16s var(--pop);
+}
+.sndrow.is-on .snd-sw { background: var(--good); }
+.sndrow.is-on .snd-sw i { transform: translateX(14px); }
+
+/* ============================================= the first-run lesson ======= */
+/*
+ * A ghost finger traces a real word across the real wheel. The overlay never
+ * takes the pointer — a player who works the gesture out in two seconds must
+ * not be trapped watching a demonstration of it.
+ */
+.tut {
+  position: absolute; inset: 0; z-index: 20;
+  pointer-events: none;
+  display: flex; flex-direction: column; align-items: center;
+  /* Centred, then lifted clear of the wheel. A percentage margin would resolve
+     against the WIDTH, which put the card over the word slots on a phone. */
+  justify-content: center;
+}
+.tut-card {
+  margin-bottom: 8vh;
+  max-width: min(300px, 78%);
+  padding: 13px 16px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .95);
+  box-shadow: 0 10px 30px rgba(10, 40, 55, .26);
+  text-align: center;
+  font: 500 13px/1.5 var(--ui); color: var(--ink-2);
+  animation: tutIn .5s cubic-bezier(.34,1.4,.64,1) backwards;
+}
+.tut-card b { color: var(--ink); }
+.tut-card > b { display: block; margin-bottom: 4px; font: 800 16px/1.2 var(--ui); }
+.tut-card p { margin: 0; }
+.tut-card .tut-word {
+  margin-top: 8px; padding-top: 8px;
+  border-top: 1px solid rgba(14, 60, 80, .12);
+  color: var(--ink-3);
+}
+.tut-skip {
+  pointer-events: auto;
+  position: absolute; right: 12px; bottom: 12px;
+  border: 0; border-radius: 999px; cursor: pointer;
+  padding: 9px 18px;
+  background: rgba(255, 255, 255, .92); color: var(--ink-2);
+  font: 700 13px/1 var(--ui);
+  box-shadow: 0 3px 10px rgba(10, 40, 55, .2);
+}
+.tut-skip:active { transform: scale(.95); }
+
+.tut-path {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 3; overflow: visible;
+}
+.tut-trail {
+  fill: none; stroke: var(--coin); stroke-width: 5;
+  stroke-linecap: round; stroke-linejoin: round;
+  opacity: .5; stroke-dasharray: 2 11;
+}
+.tut-hand { transform-box: view-box; transform-origin: 0 0; }
+.tut-halo { fill: var(--coin); opacity: .3; }
+.tut-tip  { fill: #fff; stroke: var(--coin); stroke-width: 3; }
+
+@keyframes tutIn {
+  from { opacity: 0; transform: translateY(-10px) scale(.96); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tut-card { animation: none; }
+}
+
+/* ---- the idle nudge ---- */
+/*
+ * Shown only once someone has plainly stopped, and always pointing at the
+ * cheapest way out first. It has to catch the eye at the bottom of the screen
+ * while the player is looking at the wheel, so it lifts as well as glows —
+ * a colour change alone goes unnoticed in peripheral vision.
+ */
+.hint.is-nudge {
+  background: #fff;
+  box-shadow: 0 0 0 2px var(--coin), 0 6px 16px rgba(240, 180, 41, .5);
+}
+.hint.is-nudge .hl { color: var(--ink); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .hint.is-nudge { animation: nudge 1.6s ease-in-out infinite; }
+  @keyframes nudge {
+    0%, 100% { transform: translateY(0)   scale(1); }
+    50%      { transform: translateY(-4px) scale(1.04); }
+  }
+}
+
+/* ---- the garden's top bar on a narrow phone ---- */
+/*
+ * Six chips do not fit 375px, and the two that fell off the end were the sky
+ * and the sound — both unreachable on the commonest phone size there is. The
+ * two most redundant labels go instead: the word "Garden" while you are
+ * looking at the garden, and the defence rating, whose number says the same
+ * thing in a third of the width.
+ */
+@media (max-width: 420px) {
+  /* Targeted by class: "Garden" is a bare text node in the markup, so a
+     `span:not(.chip-ico)` selector matched nothing at all. */
+  .garden .chip-title .chip-label { display: none; }
+  .garden .chip-title { padding-inline: 9px; }
+  .garden .chip-shield .dim { display: none; }
+}
+
+/* Smaller again — an SE, or an old Android. The icons carry it from here. */
+@media (max-width: 360px) {
+  .topbar .chip-label { display: none; }
+  .topbar .chip-btn[data-go="world"] { padding-inline: 9px; }
+  .chip-btn[data-go="chart"] .dim { display: none; }
+  .chip-level .qmark { display: none; }
+}
+
+/*
+ * The last resort, at any width. A chip that has fallen off the end is not
+ * merely ugly, it is unreachable — that is how the sky and sound buttons
+ * became impossible to tap on a 375px phone. Whatever the width and however
+ * many chips are added later, everything stays reachable.
+ */
+.topbar { overflow-x: auto; scrollbar-width: none; }
+.topbar::-webkit-scrollbar { display: none; }

@@ -1,0 +1,17 @@
+{
+  "name": "tamil-247-world",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Tamil word-building puzzle and isometric town builder - prototype",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "pools": "node tools/pools.mjs",
+    "dict": "node tools/dict.mjs"
+  },
+  "devDependencies": {
+    "vite": "^5.4.10"
+  }
+}
